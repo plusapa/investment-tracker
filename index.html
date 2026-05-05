@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Investment Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0F172A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Invest">
+  <style>
+    :root {
+      --bg: #0F172A;
+      --card: #1E293B;
+      --card2: #263548;
+      --gold: #F59E0B;
+      --btc: #F97316;
+      --green: #10B981;
+      --red: #EF4444;
+      --text: #F1F5F9;
+      --text2: #94A3B8;
+      --border: #334155;
+      --tab-h: 68px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: var(--tab-h);
+      overscroll-behavior: none;
+    }
+
+    /* ── Header ── */
+    .header {
+      position: sticky; top: 0; z-index: 20;
+      background: var(--bg);
+      padding: 52px 20px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .header-sub { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }
+    .header-date { font-size: 13px; color: var(--text2); }
+    .install-hint { font-size: 11px; color: var(--gold); display: none; }
+
+    /* ── Tab bar ── */
+    .tabbar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+      height: var(--tab-h);
+      background: rgba(30,41,59,0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .tab-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 3px;
+      background: none; border: none; color: var(--text2);
+      font-size: 10px; font-weight: 500; cursor: pointer;
+    }
+    .tab-btn svg { width: 22px; height: 22px; stroke-width: 2; }
+    .tab-btn.active { color: var(--gold); }
+
+    /* ── Pages ── */
+    .page { display: none; padding: 14px 14px 8px; }
+    .page.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .card-title { font-size: 15px; font-weight: 700; }
+
+    .badge {
+      font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 700;
+    }
+    .badge-green { background: rgba(16,185,129,.18); color: var(--green); }
+    .badge-red   { background: rgba(239,68,68,.18);  color: var(--red);   }
+
+    .values-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;
+    }
+    .value-box {
+      background: var(--card2); border-radius: 12px; padding: 10px 12px;
+    }
+    .vb-label { font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+    .vb-amount { font-size: 16px; font-weight: 700; }
+    .vb-amount.gold-c { color: var(--gold); }
+    .vb-amount.btc-c  { color: var(--btc);  }
+
+    .divider { height: 1px; background: var(--border); margin-bottom: 10px; }
+
+    .total-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .total-label { font-size: 13px; color: var(--text2); }
+    .total-amount { font-size: 20px; font-weight: 800; }
+
+    .cost-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .cost-label { font-size: 12px; color: var(--text2); }
+    .pl-value { font-size: 14px; font-weight: 700; }
+
+    /* Progress */
+    .prog-header {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text2); margin-bottom: 6px;
+    }
+    .prog-track {
+      height: 7px; background: var(--card2); border-radius: 4px;
+      overflow: hidden; margin-bottom: 12px;
+    }
+    .prog-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, var(--green), #34D399);
+      transition: width .6s cubic-bezier(.4,0,.2,1);
+    }
+    .prog-fill.neg { background: linear-gradient(90deg, var(--red), #F87171); }
+
+    /* Action button */
+    .action-btn {
+      width: 100%; padding: 12px 16px; border-radius: 12px;
+      border: none; font-size: 14px; font-weight: 700;
+      cursor: pointer; letter-spacing: -0.2px;
+    }
+    .btn-gold    { background: var(--gold); color: #000; }
+    .btn-btc     { background: var(--btc);  color: #fff; }
+    .btn-trigger { background: var(--green); color: #fff; }
+
+    .last-updated { font-size: 11px; color: var(--text2); text-align: center; margin-top: 8px; }
+
+    /* Alert card */
+    .alert-card {
+      background: rgba(245,158,11,.12);
+      border: 1px solid rgba(245,158,11,.35);
+      border-radius: 14px; padding: 12px 16px; margin-bottom: 12px;
+    }
+    .alert-title { font-size: 14px; font-weight: 800; color: var(--gold); }
+    .alert-body  { font-size: 13px; color: var(--text2); margin-top: 3px; }
+
+    /* ── Add page ── */
+    .segment {
+      display: flex; background: var(--card2); border-radius: 11px;
+      padding: 3px; margin-bottom: 14px;
+    }
+    .seg-btn {
+      flex: 1; padding: 8px 0; border-radius: 9px;
+      border: none; background: none; color: var(--text2);
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s;
+    }
+    .seg-btn.active { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; color: var(--text2);
+      text-transform: uppercase; letter-spacing: .8px;
+      margin-bottom: 10px;
+    }
+
+    .form-group { margin-bottom: 12px; }
+    .form-label { font-size: 13px; color: var(--text2); margin-bottom: 5px; display: block; }
+    .form-input {
+      width: 100%; padding: 12px 14px;
+      background: var(--card2); border: 1.5px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 17px;
+      -webkit-appearance: none; appearance: none;
+    }
+    .form-input:focus { outline: none; border-color: var(--gold); }
+
+    .type-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .type-btn {
+      flex: 1; padding: 11px; border-radius: 10px;
+      border: 2px solid var(--border); background: none;
+      color: var(--text2); font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: all .2s;
+    }
+    .type-btn.sel-gold { border-color: var(--gold); color: var(--gold); background: rgba(245,158,11,.1); }
+    .type-btn.sel-btc  { border-color: var(--btc);  color: var(--btc);  background: rgba(249,115,22,.1); }
+
+    .ref-row {
+      background: var(--card2); border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 12px;
+      font-size: 12px; color: var(--text2);
+    }
+    .ref-row span { color: var(--text); font-weight: 600; }
+
+    .input-wrap { position: relative; }
+    .input-suffix {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--text2); font-size: 14px; pointer-events: none;
+    }
+
+    .fetch-btn {
+      width: 100%; padding: 11px; border-radius: 10px;
+      border: 1.5px solid var(--border); background: var(--card2);
+      color: var(--text); font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-bottom: 12px;
+    }
+    .fetch-btn:active { opacity: .7; }
+
+    .live-prices {
+      display: none; gap: 8px; margin-bottom: 12px;
+    }
+    .lp-box {
+      flex: 1; background: var(--card2); border-radius: 10px;
+      padding: 9px 12px; text-align: center;
+    }
+    .lp-label { font-size: 10px; color: var(--text2); margin-bottom: 2px; }
+    .lp-value { font-size: 13px; font-weight: 700; }
+
+    .save-btn {
+      width: 100%; padding: 15px; border-radius: 13px;
+      border: none; background: var(--gold); color: #000;
+      font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 4px;
+    }
+    .save-btn:active { opacity: .8; }
+
+    /* ── History ── */
+    .hist-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .hist-item:last-child { border-bottom: none; }
+    .hi-date { font-size: 12px; color: var(--text2); }
+    .hi-desc { font-size: 14px; font-weight: 600; margin-top: 2px; }
+    .hi-right { text-align: right; }
+    .hi-total { font-size: 14px; font-weight: 700; }
+    .hi-pl { font-size: 12px; margin-top: 2px; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: calc(var(--tab-h) + 16px);
+      left: 50%; transform: translateX(-50%) translateY(0);
+      background: var(--green); color: #fff;
+      padding: 10px 22px; border-radius: 22px;
+      font-size: 14px; font-weight: 600;
+      opacity: 0; transition: opacity .3s;
+      pointer-events: none; z-index: 99;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📈 Investment Tracker</h1>
+  <div class="header-sub">
+    <span class="header-date" id="hdr-date"></span>
+    <span class="install-hint" id="install-hint">☝️ Add to Home Screen</span>
+  </div>
+</div>
+
+<!-- ── DASHBOARD ── -->
+<div id="page-dashboard" class="page active">
+  <div id="alert-area"></div>
+  <div id="card-108"></div>
+  <div id="card-weekly"></div>
+</div>
+
+<!-- ── ADD ── -->
+<div id="page-add" class="page">
+
+  <div class="segment">
+    <button class="seg-btn active" id="seg-108"    onclick="selProj('p108')">Project 108</button>
+    <button class="seg-btn"        id="seg-weekly" onclick="selProj('pweekly')">Weekly</button>
+  </div>
+
+  <!-- Transaction block -->
+  <div class="card">
+    <div class="section-label">ซื้อวันนี้</div>
+    <div class="form-group">
+      <label class="form-label">วันที่</label>
+      <input type="date" id="inp-date" class="form-input">
+    </div>
+    <div class="form-label">ประเภท</div>
+    <div class="type-row">
+      <button class="type-btn sel-gold" id="btn-gold" onclick="selType('Gold')">🥇 Gold</button>
+      <button class="type-btn"          id="btn-btc"  onclick="selType('BTC')">₿ BTC</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">จำนวน (THB)</label>
+      <div class="input-wrap">
+        <input type="number" inputmode="decimal" id="inp-amount" class="form-input"
+               placeholder="290" style="padding-right:52px">
+        <span class="input-suffix">THB</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actual values block -->
+  <div class="card">
+    <div class="section-label">มูลค่าจริงวันนี้</div>
+    <div id="ref-values" class="ref-row"></div>
+    <button class="fetch-btn" onclick="fetchPrices()">🔄 Fetch ราคา BTC + Gold</button>
+    <div class="live-prices" id="live-prices">
+      <div class="lp-box"><div class="lp-label">BTC</div><div class="lp-value" id="lp-btc">–</div></div>
+      <div class="lp-box"><div class="lp-label">Gold /oz</div><div class="lp-value" id="lp-gold">–</div></div>
+      <div class="lp-box"><div class="lp-label">USD/THB</div><div class="lp-value" id="lp-fx">–</div></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">มูลค่า Gold จริง (THB)</label>
+      <div class="input-wrap">
+        <input type="number" inputmode="decimal" id="inp-gold" class="form-input"
+               placeholder="0" style="padding-right:52px">
+        <span class="input-suffix">THB</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">มูลค่า BTC จริง (THB)</label>
+      <div class="input-wrap">
+        <input type="number" inputmode="decimal" id="inp-btc" class="form-input"
+               placeholder="0" style="padding-right:52px">
+        <span class="input-suffix">THB</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="save-btn" onclick="saveEntry()">💾 บันทึก</button>
+</div>
+
+<!-- ── HISTORY ── -->
+<div id="page-history" class="page">
+  <div id="hist-108"></div>
+  <div id="hist-weekly"></div>
+</div>
+
+<!-- ── TAB BAR ── -->
+<nav class="tabbar">
+  <button class="tab-btn active" id="tab-dashboard" onclick="goTab('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+    </svg>
+    Dashboard
+  </button>
+  <button class="tab-btn" id="tab-add" onclick="goTab('add')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <circle cx="12" cy="12" r="9"/>
+      <line x1="12" y1="8" x2="12" y2="16"/>
+      <line x1="8" y1="12" x2="16" y2="12"/>
+    </svg>
+    บันทึก
+  </button>
+  <button class="tab-btn" id="tab-history" onclick="goTab('history')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+      <line x1="9" y1="12" x2="15" y2="12"/>
+      <line x1="9" y1="16" x2="13" y2="16"/>
+    </svg>
+    ประวัติ
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════
+//  SEED DATA
+// ════════════════════════════════════════
+const SEED = {
+  p108: {
+    transactions: [
+      { id:1, date:'2026-04-27', type:'BTC',  amount:18468, note:'เริ่มต้น'  },
+      { id:2, date:'2026-04-27', type:'Gold', amount:19546, note:'เริ่มต้น'  },
+      { id:3, date:'2026-04-27', type:'Gold', amount:290,   note:'ซื้อ Gold' },
+      { id:4, date:'2026-04-28', type:'BTC',  amount:289,   note:'ซื้อ BTC'  },
+      { id:5, date:'2026-04-29', type:'Gold', amount:290,   note:'ซื้อ Gold' },
+      { id:6, date:'2026-04-29', type:'BTC',  amount:289,   note:'ซื้อ BTC'  },
+      { id:7, date:'2026-05-01', type:'Gold', amount:290,   note:'ซื้อ Gold' },
+      { id:8, date:'2026-05-05', type:'Gold', amount:290,   note:'ซื้อ Gold' },
+    ],
+    records: [
+      { id:1, date:'2026-04-29', goldActual:19688.42, btcActual:19404.51 },
+      { id:2, date:'2026-05-01', goldActual:20030,    btcActual:20557    },
+      { id:3, date:'2026-05-03', goldActual:20100,    btcActual:20560    },
+      { id:4, date:'2026-05-04', goldActual:20154,    btcActual:20914    },
+      { id:5, date:'2026-05-05', goldActual:20467,    btcActual:21317    },
+    ]
+  },
+  pweekly: {
+    transactions: [
+      { id:1, date:'2026-04-27', weekNum:1, type:'Gold', amount:24500, note:'เริ่มต้น'  },
+      { id:2, date:'2026-04-27', weekNum:1, type:'BTC',  amount:1000,  note:'ซื้อ BTC'  },
+      { id:3, date:'2026-05-04', weekNum:2, type:'BTC',  amount:1000,  note:'ซื้อ BTC'  },
+    ],
+    records: [
+      { id:1, date:'2026-04-27', weekNum:1, goldActual:24101, btcActual:1073 },
+      { id:2, date:'2026-05-04', weekNum:2, goldActual:23866, btcActual:2084 },
+    ]
+  }
+};
+
+// ════════════════════════════════════════
+//  STORAGE
+// ════════════════════════════════════════
+function load() {
+  return {
+    p108:    JSON.parse(localStorage.getItem('inv_p108'))    || JSON.parse(JSON.stringify(SEED.p108)),
+    pweekly: JSON.parse(localStorage.getItem('inv_pweekly')) || JSON.parse(JSON.stringify(SEED.pweekly)),
+  };
+}
+function persist(data) {
+  localStorage.setItem('inv_p108',    JSON.stringify(data.p108));
+  localStorage.setItem('inv_pweekly', JSON.stringify(data.pweekly));
+}
+
+let D = load();
+let curProj = 'p108';
+let curType = 'Gold';
+
+// ════════════════════════════════════════
+//  CALCULATIONS
+// ════════════════════════════════════════
+function calc(proj) {
+  const t = proj.transactions;
+  const r = proj.records;
+  const goldCost = t.filter(x => x.type === 'Gold').reduce((s,x) => s + x.amount, 0);
+  const btcCost  = t.filter(x => x.type === 'BTC' ).reduce((s,x) => s + x.amount, 0);
+  const totalCost = goldCost + btcCost;
+  const latest = r.length ? r[r.length - 1] : null;
+  if (!latest) return { goldCost, btcCost, totalCost, curGold:0, curBTC:0, total:0, pl:0, plPct:0, latest:null };
+  const curGold  = latest.goldActual;
+  const curBTC   = latest.btcActual;
+  const total    = curGold + curBTC;
+  const pl       = total - totalCost;
+  const plPct    = totalCost > 0 ? pl / totalCost : 0;
+  return { goldCost, btcCost, totalCost, curGold, curBTC, total, pl, plPct, latest };
+}
+
+function rebalAction(c) {
+  if (c.plPct >= 0.20) return { cls:'btn-trigger', label:'🎉 ถอนกำไรซื้อ Dividend ETF!' };
+  if (c.curGold < c.curBTC) return { cls:'btn-gold', label:'🥇 ซื้อ Gold (Gold < BTC)' };
+  return { cls:'btn-btc', label:'₿ ซื้อ BTC (BTC < Gold)' };
+}
+
+// ════════════════════════════════════════
+//  FORMAT
+// ════════════════════════════════════════
+const fmtN  = n => n.toLocaleString('th-TH', { maximumFractionDigits:0 });
+const fmtPL = n => (n >= 0 ? '+' : '') + fmtN(n) + ' THB';
+const fmtPct = n => (n >= 0 ? '+' : '') + (n * 100).toFixed(2) + '%';
+
+function fmtDate(s) {
+  const d = new Date(s + 'T00:00:00');
+  return d.toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' });
+}
+
+// ════════════════════════════════════════
+//  RENDER — DASHBOARD
+// ════════════════════════════════════════
+function renderDash() {
+  const c108 = calc(D.p108);
+  const cw   = calc(D.pweekly);
+
+  let alert = '';
+  if (c108.plPct >= 0.20 || cw.plPct >= 0.20) {
+    alert = `<div class="alert-card">
+      <div class="alert-title">🎉 REBALANCE TRIGGER!</div>
+      <div class="alert-body">กำไรถึง 20% แล้ว — ถอนกำไรทั้งหมดออกซื้อ Dividend ETF</div>
+    </div>`;
+  }
+  document.getElementById('alert-area').innerHTML = alert;
+  document.getElementById('card-108').innerHTML    = projCard('Project 108',    c108, '108');
+  document.getElementById('card-weekly').innerHTML = projCard('Project Weekly', cw,   'weekly');
+}
+
+function projCard(title, c, id) {
+  const a      = rebalAction(c);
+  const isPos  = c.plPct >= 0;
+  const badgeCls = isPos ? 'badge-green' : 'badge-red';
+  const plCss    = isPos ? 'var(--green)' : 'var(--red)';
+  const prog     = isPos ? Math.min(100, c.plPct / 0.20 * 100) : 0;
+  const lastDate = c.latest ? fmtDate(c.latest.date) : '-';
+
+  return `
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">${title}</span>
+      <span class="badge ${badgeCls}">${fmtPct(c.plPct)}</span>
+    </div>
+    <div class="values-grid">
+      <div class="value-box">
+        <div class="vb-label">🥇 Gold</div>
+        <div class="vb-amount gold-c">${fmtN(c.curGold)}</div>
+      </div>
+      <div class="value-box">
+        <div class="vb-label">₿ BTC</div>
+        <div class="vb-amount btc-c">${fmtN(c.curBTC)}</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="total-row">
+      <span class="total-label">มูลค่ารวม</span>
+      <span class="total-amount">${fmtN(c.total)} THB</span>
+    </div>
+    <div class="cost-row">
+      <span class="cost-label">ต้นทุน ${fmtN(c.totalCost)} THB</span>
+      <span class="pl-value" style="color:${plCss}">${fmtPL(c.pl)}</span>
+    </div>
+    <div class="prog-header">
+      <span>Progress → 20% target</span>
+      <span>${(c.plPct*100).toFixed(2)}% / 20%</span>
+    </div>
+    <div class="prog-track">
+      <div class="prog-fill ${isPos ? '' : 'neg'}" style="width:${prog}%"></div>
+    </div>
+    <button class="action-btn ${a.cls}" onclick="quickAdd('${id}')">${a.label}</button>
+    <div class="last-updated">อัพเดทล่าสุด: ${lastDate}</div>
+  </div>`;
+}
+
+// ════════════════════════════════════════
+//  RENDER — HISTORY
+// ════════════════════════════════════════
+function renderHist() {
+  document.getElementById('hist-108').innerHTML    = histCard('Project 108',    D.p108);
+  document.getElementById('hist-weekly').innerHTML = histCard('Project Weekly', D.pweekly);
+}
+
+function histCard(title, proj) {
+  const recs = [...proj.records].reverse();
+  if (!recs.length) return `<div class="card"><div class="card-title">${title}</div>
+    <p style="color:var(--text2);font-size:13px;margin-top:8px">ยังไม่มีข้อมูล</p></div>`;
+
+  const rows = recs.map(r => {
+    const costSoFar = proj.transactions
+      .filter(t => t.date <= r.date)
+      .reduce((s, t) => s + t.amount, 0);
+    const tot    = r.goldActual + r.btcActual;
+    const pl     = tot - costSoFar;
+    const plPct  = costSoFar > 0 ? pl / costSoFar : 0;
+    const plCss  = plPct >= 0 ? 'var(--green)' : 'var(--red)';
+    return `
+    <div class="hist-item">
+      <div>
+        <div class="hi-date">${fmtDate(r.date)}</div>
+        <div class="hi-desc">🥇 ${fmtN(r.goldActual)} &nbsp;₿ ${fmtN(r.btcActual)}</div>
+      </div>
+      <div class="hi-right">
+        <div class="hi-total">${fmtN(tot)}</div>
+        <div class="hi-pl" style="color:${plCss}">${fmtPct(plPct)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="card" style="margin-bottom:12px">
+    <div class="card-header"><span class="card-title">${title}</span></div>
+    ${rows}
+  </div>`;
+}
+
+// ════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════
+function goTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.getElementById('tab-'  + tab).classList.add('active');
+  if (tab === 'dashboard') renderDash();
+  if (tab === 'history')   renderHist();
+  if (tab === 'add')       updateRefValues();
+}
+
+function selProj(proj) {
+  curProj = proj;
+  document.getElementById('seg-108').classList.toggle('active', proj === 'p108');
+  document.getElementById('seg-weekly').classList.toggle('active', proj === 'pweekly');
+  document.getElementById('inp-amount').placeholder = proj === 'pweekly' ? '1000' : '290';
+  document.getElementById('inp-amount').value = '';
+  updateRefValues();
+}
+
+function selType(type) {
+  curType = type;
+  document.getElementById('btn-gold').className = 'type-btn' + (type === 'Gold' ? ' sel-gold' : '');
+  document.getElementById('btn-btc' ).className = 'type-btn' + (type === 'BTC'  ? ' sel-btc'  : '');
+}
+
+function quickAdd(id) {
+  const proj = id === '108' ? 'p108' : 'pweekly';
+  const c    = calc(D[proj]);
+  const act  = rebalAction(c);
+  goTab('add');
+  selProj(proj);
+  if (act.cls === 'btn-gold') selType('Gold');
+  else if (act.cls === 'btn-btc') selType('BTC');
+}
+
+function updateRefValues() {
+  const proj   = D[curProj];
+  const latest = proj.records.length ? proj.records[proj.records.length - 1] : null;
+  const el     = document.getElementById('ref-values');
+  if (latest) {
+    el.innerHTML = `ล่าสุด (${fmtDate(latest.date)}): Gold <span>${fmtN(latest.goldActual)}</span> / BTC <span>${fmtN(latest.btcActual)}</span> THB`;
+  } else {
+    el.innerHTML = 'ยังไม่มีข้อมูลก่อนหน้า';
+  }
+}
+
+// ════════════════════════════════════════
+//  SAVE
+// ════════════════════════════════════════
+function saveEntry() {
+  const dateVal   = document.getElementById('inp-date').value;
+  const amtVal    = parseFloat(document.getElementById('inp-amount').value) || 0;
+  const goldVal   = parseFloat(document.getElementById('inp-gold').value)   || 0;
+  const btcVal    = parseFloat(document.getElementById('inp-btc').value)    || 0;
+
+  if (!dateVal)                  { toast('กรุณาเลือกวันที่', true); return; }
+  if (!amtVal && !goldVal && !btcVal) { toast('กรุณาใส่ข้อมูลอย่างน้อย 1 ช่อง', true); return; }
+
+  const proj = D[curProj];
+
+  if (amtVal > 0) {
+    const maxId = proj.transactions.reduce((m, t) => Math.max(m, t.id), 0);
+    const entry = { id: maxId + 1, date: dateVal, type: curType, amount: amtVal, note: `ซื้อ ${curType}` };
+    if (curProj === 'pweekly') {
+      const lastWk = proj.transactions.reduce((m, t) => Math.max(m, t.weekNum || 0), 0);
+      entry.weekNum = lastWk + (proj.records.length && dateVal > proj.records[proj.records.length-1].date ? 1 : lastWk || 1);
+    }
+    proj.transactions.push(entry);
+  }
+
+  if (goldVal > 0 && btcVal > 0) {
+    const maxId = proj.records.reduce((m, r) => Math.max(m, r.id), 0);
+    const rec   = { id: maxId + 1, date: dateVal, goldActual: goldVal, btcActual: btcVal };
+    if (curProj === 'pweekly') {
+      const lastWk = proj.records.reduce((m, r) => Math.max(m, r.weekNum || 0), 0);
+      rec.weekNum = lastWk + (dateVal > (proj.records[proj.records.length-1]?.date || '') ? 1 : 0) || 1;
+    }
+    proj.records.push(rec);
+  }
+
+  persist(D);
+  toast('✅ บันทึกแล้ว!');
+
+  document.getElementById('inp-amount').value = '';
+  document.getElementById('inp-gold').value   = '';
+  document.getElementById('inp-btc').value    = '';
+  updateRefValues();
+  renderDash();
+}
+
+// ════════════════════════════════════════
+//  FETCH PRICES
+// ════════════════════════════════════════
+async function fetchPrices() {
+  const btn = document.querySelector('.fetch-btn');
+  btn.textContent = '⏳ กำลังดึง...';
+  btn.disabled = true;
+
+  try {
+    const [btcRes, fxRes] = await Promise.all([
+      fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=thb'),
+      fetch('https://api.exchangerate-api.com/v4/latest/USD'),
+    ]);
+    const btcData = await btcRes.json();
+    const fxData  = await fxRes.json();
+    const btcThb  = btcData.bitcoin.thb;
+    const usdThb  = fxData.rates.THB;
+
+    document.getElementById('lp-btc').textContent = fmtN(btcThb) + ' ฿';
+    document.getElementById('lp-fx').textContent  = usdThb.toFixed(2);
+
+    // Try Gold
+    let goldNote = '–';
+    try {
+      const gRes  = await fetch('https://api.metals.live/v1/spot/gold');
+      const gData = await gRes.json();
+      const gUsd  = Array.isArray(gData) ? gData[0]?.price : gData?.price;
+      if (gUsd) {
+        const gThb = gUsd * usdThb;
+        document.getElementById('lp-gold').textContent = fmtN(gThb) + ' ฿';
+        goldNote = fmtN(gThb);
+      }
+    } catch { document.getElementById('lp-gold').textContent = 'ใส่เอง'; }
+
+    document.getElementById('live-prices').style.display = 'flex';
+    toast('✅ ดึงราคาแล้ว');
+  } catch (e) {
+    toast('❌ เชื่อมต่อไม่ได้', true);
+  }
+
+  btn.textContent = '🔄 Fetch ราคา BTC + Gold';
+  btn.disabled = false;
+}
+
+// ════════════════════════════════════════
+//  UTILITIES
+// ════════════════════════════════════════
+function toast(msg, isErr = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = isErr ? 'var(--red)' : 'var(--green)';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+function init() {
+  const today = new Date();
+  document.getElementById('inp-date').value = today.toISOString().split('T')[0];
+  document.getElementById('hdr-date').textContent = today.toLocaleDateString('th-TH', {
+    weekday:'long', day:'numeric', month:'long', year:'numeric'
+  });
+
+  // Show "Add to Home Screen" hint on iOS Safari (not standalone)
+  const isIOS        = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone;
+  if (isIOS && !isStandalone) document.getElementById('install-hint').style.display = 'block';
+
+  renderDash();
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+init();
+</script>
+</body>
+</html>
