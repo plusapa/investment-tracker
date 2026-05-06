@@ -29,7 +29,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
-      padding-bottom: var(--tab-h);
+      padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
       overscroll-behavior: none;
     }
 
@@ -242,7 +242,7 @@
 
     /* ── Toast ── */
     .toast {
-      position: fixed; bottom: calc(var(--tab-h) + 16px);
+      position: fixed; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 16px);
       left: 50%; transform: translateX(-50%) translateY(0);
       background: var(--green); color: #fff;
       padding: 10px 22px; border-radius: 22px;
