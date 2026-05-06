@@ -1,4 +1,4 @@
-const CACHE = 'invest-v1';
+const CACHE = 'invest-v2';
 const FILES = ['./index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
