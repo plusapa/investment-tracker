@@ -339,6 +339,7 @@
 
 <!-- ── HISTORY ── -->
 <div id="page-history" class="page">
+  <button class="fetch-btn" onclick="exportData()" style="margin-bottom:14px">📤 Export ข้อมูลไป Excel (Mac)</button>
   <div id="hist-108"></div>
   <div id="hist-weekly"></div>
 </div>
@@ -706,6 +707,21 @@ async function fetchPrices() {
 
   btn.textContent = '🔄 Fetch ราคา BTC + Gold';
   btn.disabled = false;
+}
+
+// ════════════════════════════════════════
+//  EXPORT
+// ════════════════════════════════════════
+function exportData() {
+  const json = JSON.stringify(D, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'investment_export.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('📤 Export แล้ว! นำไฟล์ไปรัน Python script บน Mac ครับ');
 }
 
 // ════════════════════════════════════════
